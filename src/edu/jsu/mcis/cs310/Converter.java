@@ -2,6 +2,12 @@ package edu.jsu.mcis.cs310;
 
 import com.github.cliftonlabs.json_simple.*;
 import com.opencsv.*;
+import com.opencsv.CSVWriter;
+import java.io.StringWriter;
+import java.io.StringReader;
+import java.util.List;
+import java.text.DecimalFormat;
+import java.util.Arrays;
 
 public class Converter {
     
@@ -80,6 +86,44 @@ public class Converter {
         
             // INSERT YOUR CODE HERE
             
+            CSVReader reader = new CSVReader(new StringReader(csvString));
+            List<String[]> lines = reader.readAll();
+            String[] header = lines.get(0);
+            
+            //JSON Object & Arrays
+            JsonObject jsonObj = new JsonObject();
+            JsonArray jsonCol = new JsonArray();
+            JsonArray jsonNum = new JsonArray();
+            JsonArray jsonData = new JsonArray();
+            
+            jsonCol.addAll(Arrays.asList(header)); 
+            
+            for (int i = 1; i < lines.size(); i++) {
+                
+                String[] data = lines.get(i);
+                jsonNum.add(data[0]);
+                JsonArray jsonhold = new JsonArray();
+                
+                for(int j = 1; j < data.length; j++) {
+                    
+                    if (j == jsonCol.indexOf("Episode") || j == jsonCol.indexOf("Season")) {
+                        jsonhold.add(Integer.parseInt(data[j])); 
+                    }
+                    else {
+                        jsonhold.add(data[j]); 
+                    }
+                    
+                }
+                
+                jsonData.add(jsonhold);
+            }
+            
+            jsonObj.put("ColHeadings", jsonCol);
+            jsonObj.put("ProdNums", jsonNum);
+            jsonObj.put("Data", jsonData);
+            
+            result = Jsoner.serialize(jsonObj);
+            
         }
         catch (Exception e) {
             e.printStackTrace();
@@ -94,11 +138,53 @@ public class Converter {
         
         String result = ""; // default return value; replace later!
         
+        DecimalFormat decFor = new DecimalFormat("00");
+        
         try {
             
             // INSERT YOUR CODE HERE
             
+            JsonObject jsonObj = Jsoner.deserialize(jsonString, new JsonObject());
+            StringWriter writer = new StringWriter();
+            CSVWriter csvWriter = new CSVWriter(writer, ',', '"', '\\', "\n");
+            
+            
+            JsonArray jsonCol = (JsonArray) jsonObj.get("ColHeadings");
+            JsonArray jsonNum = (JsonArray) jsonObj.get("ProdNums");
+            JsonArray jsonData = (JsonArray) jsonObj.get("Data");
+
+            String[] header = new String[jsonCol.size()];
+            
+            for(int i = 0; i < jsonCol.size(); i++) {
+                header[i] = jsonCol.get(i).toString();
+            }
+            
+            csvWriter.writeNext(header);
+            
+            for(int i = 0; i < jsonNum.size(); i++) {
+                JsonArray info = (JsonArray) jsonData.get(i);
+                String[] nums = new String[jsonCol.size()];
+                nums[0] = jsonNum.get(i).toString();
+                
+                for(int j = 0; j < info.size(); j++) {
+                    
+                    if(info.get(j)==info.get(jsonCol.indexOf("Episode")-1)) {
+                        int num = Integer.parseInt(info.get(j).toString());
+                        String formating = decFor.format(num);
+                        nums[j + 1] = formating;
+                    }
+                    
+                    else {
+                        nums[j + 1] = info.get(j).toString();
+                    }
+                    
+                }
+                csvWriter.writeNext(nums);
+            }
+            
+            result = writer.toString();
         }
+        
         catch (Exception e) {
             e.printStackTrace();
         }
